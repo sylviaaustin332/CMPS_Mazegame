@@ -1,0 +1,321 @@
+"""
+TRUE MAZE GAME – Polished Version
+
+Upgrades:
+- Double-width tiles for perfect alignment
+- ANSI color support
+- Fixed diagonal corner cutting
+- Improved spike placement
+- Cleaner rendering
+"""
+
+import os
+import sys
+import random
+import time
+from typing import List, Tuple, Optional
+
+# =============================
+# ANSI COLORS
+# =============================
+
+RESET = "\033[0m"
+GRAY = "\033[90m"
+RED = "\033[91m"
+GREEN = "\033[92m"
+CYAN = "\033[96m"
+YELLOW = "\033[93m"
+
+# =============================
+# TILE CONSTANTS (2-char wide)
+# =============================
+
+WALL = "██"
+OPEN = "  "
+SPIKE = "^^"
+START = "SS"
+EXIT = "EE"
+PLAYER = "@@"
+
+# =============================
+# MOVEMENT MAP
+# =============================
+
+MOVE_MAP = {
+    "w": (-1, 0),
+    "s": (1, 0),
+    "a": (0, -1),
+    "d": (0, 1),
+    "q": (-1, -1),
+    "e": (-1, 1),
+    "z": (1, -1),
+    "c": (1, 1),
+}
+
+# =============================
+# UTILITIES
+# =============================
+
+def clear_screen():
+    os.system("cls" if os.name == "nt" else "clear")
+
+def read_char():
+    try:
+        import msvcrt
+        ch = msvcrt.getch()
+        return ch.decode("utf-8").lower()
+    except ImportError:
+        import tty
+        import termios
+        fd = sys.stdin.fileno()
+        old = termios.tcgetattr(fd)
+        try:
+            tty.setraw(fd)
+            return sys.stdin.read(1).lower()
+        finally:
+            termios.tcsetattr(fd, termios.TCSADRAIN, old)
+
+def in_bounds(grid, r, c):
+    return 0 <= r < len(grid) and 0 <= c < len(grid[0])
+
+# =============================
+# RENDERING
+# =============================
+
+def render(grid, player_pos, steps):
+    clear_screen()
+    print(CYAN + "=== TRUE MAZE GAME ===" + RESET)
+    print("Controls: w/a/s/d, q/e/z/c (diagonals)")
+    print("r = restart | n = new maze | x = quit")
+    print(f"Steps: {steps}\n")
+
+    pr, pc = player_pos
+
+    for r, row in enumerate(grid):
+        line = []
+        for c, ch in enumerate(row):
+            if (r, c) == (pr, pc):
+                line.append(CYAN + PLAYER + RESET)
+            elif ch == WALL:
+                line.append(GRAY + WALL + RESET)
+            elif ch == SPIKE:
+                line.append(RED + SPIKE + RESET)
+            elif ch == START:
+                line.append(GREEN + START + RESET)
+            elif ch == EXIT:
+                line.append(YELLOW + EXIT + RESET)
+            else:
+                line.append(OPEN)
+        print("".join(line))
+    print()
+
+# =============================
+# MAZE GENERATION
+# =============================
+
+def generate_true_maze(rows, cols, seed=None):
+    if seed is not None:
+        random.seed(seed)
+
+    if rows % 2 == 0:
+        rows += 1
+    if cols % 2 == 0:
+        cols += 1
+
+    grid = [[WALL for _ in range(cols)] for _ in range(rows)]
+    carve_dirs = [(-2,0),(2,0),(0,-2),(0,2)]
+
+    def carve(r, c):
+        grid[r][c] = OPEN
+        random.shuffle(carve_dirs)
+        for dr, dc in carve_dirs:
+            nr, nc = r+dr, c+dc
+            if not in_bounds(grid, nr, nc):
+                continue
+            if grid[nr][nc] == OPEN:
+                continue
+            grid[r+dr//2][c+dc//2] = OPEN
+            carve(nr, nc)
+
+    start_r = random.randrange(1, rows, 2)
+    start_c = random.randrange(1, cols, 2)
+    carve(start_r, start_c)
+    return grid
+
+# =============================
+# BFS HELPERS
+# =============================
+
+def bfs_farthest_open(grid, start):
+    from collections import deque
+    dirs = [(-1,0),(1,0),(0,-1),(0,1)]
+    q = deque([start])
+    dist = {start:0}
+    farthest = start
+
+    while q:
+        r,c = q.popleft()
+        if dist[(r,c)] > dist[farthest]:
+            farthest = (r,c)
+        for dr,dc in dirs:
+            nr,nc = r+dr,c+dc
+            if not in_bounds(grid,nr,nc):
+                continue
+            if grid[nr][nc] != OPEN:
+                continue
+            if (nr,nc) in dist:
+                continue
+            dist[(nr,nc)] = dist[(r,c)] + 1
+            q.append((nr,nc))
+    return farthest
+
+def bfs_shortest_path(grid, start, goal):
+    from collections import deque
+    dirs = [(-1,0),(1,0),(0,-1),(0,1)]
+    q = deque([start])
+    parent = {start:None}
+
+    while q:
+        r,c = q.popleft()
+        if (r,c)==goal:
+            break
+        for dr,dc in dirs:
+            nr,nc = r+dr,c+dc
+            if not in_bounds(grid,nr,nc):
+                continue
+            if grid[nr][nc]==WALL:
+                continue
+            if (nr,nc) in parent:
+                continue
+            parent[(nr,nc)] = (r,c)
+            q.append((nr,nc))
+
+    if goal not in parent:
+        return []
+
+    path=[]
+    cur=goal
+    while cur:
+        path.append(cur)
+        cur=parent[cur]
+    path.reverse()
+    return path
+
+# =============================
+# START / EXIT / SPIKES
+# =============================
+
+def choose_start_exit(grid):
+    opens=[(r,c) for r in range(len(grid))
+                  for c in range(len(grid[0]))
+                  if grid[r][c]==OPEN]
+    start=random.choice(opens)
+    exit_pos=bfs_farthest_open(grid,start)
+    return start,exit_pos
+
+def place_spikes(grid, fraction, start, exit_pos):
+    safe_path=set(bfs_shortest_path(grid,start,exit_pos))
+    candidates=[]
+
+    for r in range(len(grid)):
+        for c in range(len(grid[0])):
+            if grid[r][c]!=OPEN:
+                continue
+            if (r,c) in safe_path:
+                continue
+            if abs(r-start[0])<=1 and abs(c-start[1])<=1:
+                continue
+            candidates.append((r,c))
+
+    random.shuffle(candidates)
+    spike_count=int(len(candidates)*fraction)
+
+    for r,c in candidates[:spike_count]:
+        grid[r][c]=SPIKE
+
+# =============================
+# BUILD GAME
+# =============================
+
+def build_new_game(rows=15,cols=29,spike_fraction=0.07):
+    grid=generate_true_maze(rows,cols)
+    start,exit_pos=choose_start_exit(grid)
+    place_spikes(grid,spike_fraction,start,exit_pos)
+    grid[start[0]][start[1]]=START
+    grid[exit_pos[0]][exit_pos[1]]=EXIT
+    return grid,start,exit_pos
+
+# =============================
+# MOVEMENT
+# =============================
+
+def try_move(grid,player,start,delta):
+    r,c=player
+    dr,dc=delta
+    nr,nc=r+dr,c+dc
+
+    if not in_bounds(grid,nr,nc):
+        return player,"blocked"
+
+    # Prevent diagonal corner cutting
+    if abs(dr)==1 and abs(dc)==1:
+        if grid[r+dr][c]==WALL and grid[r][c+dc]==WALL:
+            return player,"blocked"
+
+    target=grid[nr][nc]
+    if target==WALL:
+        return player,"blocked"
+    if target==SPIKE:
+        return start,"spike"
+    if target==EXIT:
+        return (nr,nc),"exit"
+    return (nr,nc),"moved"
+
+# =============================
+# MAIN LOOP
+# =============================
+
+def main():
+    grid,start,exit_pos=build_new_game()
+    player=start
+    steps=0
+
+    while True:
+        render(grid,player,steps)
+
+        if player==exit_pos:
+            print(YELLOW+f"🎉 You escaped in {steps} steps!"+RESET)
+            break
+
+        print("Move: ",end="",flush=True)
+        key=read_char()
+
+        if key=="x":
+            break
+        if key=="r":
+            player=start
+            steps=0
+            continue
+        if key=="n":
+            grid,start,exit_pos=build_new_game()
+            player=start
+            steps=0
+            continue
+        if key not in MOVE_MAP:
+            continue
+
+        new_pos,result=try_move(grid,player,start,MOVE_MAP[key])
+
+        if result=="blocked":
+            continue
+
+        player=new_pos
+        steps+=1
+
+        if result=="spike":
+            render(grid,player,steps)
+            print(RED+"💥 Spike! Returning to start..."+RESET)
+            time.sleep(0.8)
+
+if __name__=="__main__":
+    main()
