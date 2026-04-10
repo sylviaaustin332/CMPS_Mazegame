@@ -1,4 +1,5 @@
 # True Maze Game
+Sylvia Austin, Shayna Shpits, Lucy Pauze
 
 This is a terminal-based maze exploration game written in Python.  The goal is
 to navigate from a random start (`SS`) to the exit (`EE`) while avoiding
