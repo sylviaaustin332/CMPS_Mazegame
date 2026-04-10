@@ -5,7 +5,7 @@ import pathlib
 
 # dynamically load the maze game script by path so the test suite works even if
 # the filename isn't a normal module name (it has no .py extension).
-script_path = pathlib.Path(__file__).parent.parent / "truemazegame_midtermrevision"
+script_path = pathlib.Path(__file__).parent.parent / "Mazegame_midterm.py"
 loader = importlib.machinery.SourceFileLoader("maze_game", str(script_path))
 maze_game = loader.load_module()
 
