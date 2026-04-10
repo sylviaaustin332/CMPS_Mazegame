@@ -22,7 +22,7 @@ spikes, walls, and transient monsters.
 Simply execute the script with Python:
 
 ```bash
-python truemazegame_midtermrevision
+Mazegame_midterm.py
 ```
 
 Ensure your terminal supports ANSI escape codes and the monster emoji.
