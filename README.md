@@ -20,8 +20,7 @@ r restarts, n creates a new maze, x quits.
 
 Running:
 
-Simply execute the script with Python:
-Mazegame_midterm.py
+Simply execute the script with Python:midterm.py
 
 Ensure your terminal supports ANSI escape codes and the monster emoji.
 
