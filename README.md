@@ -20,13 +20,13 @@ r restarts, n creates a new maze, x quits.
 
 Running:
 
-Simply execute the script with Python: midterm.py
+Simply execute the script with Python: mazegame.py
 
 Ensure your terminal supports ANSI escape codes and the monster emoji.
 
 Code Organization
 
-The entire gameplay logic lives in a single Python script (midterm.py).
+The entire gameplay logic lives in a single Python script (mazegame.py).
 To keep the code readable, functionality is separated into helper functions
 and logical components that handle maze generation, pathfinding, hazard
 placement, player movement, rendering, and the main game loop.
