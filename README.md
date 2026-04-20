@@ -1,4 +1,4 @@
-True Maze Game
+Maze Game
 
 Sylvia Austin, Shayna Shpits, Lucy Pauze
 
