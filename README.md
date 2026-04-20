@@ -3,8 +3,8 @@ True Maze Game
 Sylvia Austin, Shayna Shpits, Lucy Pauze
 
 This is a window-based maze exploration game written in Python. The goal is
-to navigate from a random start (S) to the exit (💎) while avoiding
-spikes and transient monsters. 
+to navigate as the player/ wizard (🧙) from a random start (S) to the exit (💎) while avoiding
+spikes and transient monsters (👾). 
 The game design features three difficulty levels with a personal record tracker following the player's number of moves per level. 
 
 Features
